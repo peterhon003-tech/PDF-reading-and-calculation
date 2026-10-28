@@ -1,0 +1,9 @@
+data/
+out/
+__pycache__/
+*.pyc
+.git/
+.venv/
+*.pdf
+tests/
+README.md

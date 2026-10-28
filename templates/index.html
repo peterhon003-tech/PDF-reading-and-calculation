@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steel Member Annotator</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --ink:#1d2433; --muted:#667085; --line:#d9dde5; --blue:#1f4fd8; --ok:#157f3d; --err:#b42318; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12151c; --card:#1b202b; --ink:#e8ebf2; --muted:#9aa3b5; --line:#2e3646; --blue:#6c93ff; --ok:#46c473; --err:#ff7b72; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 28px 18px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; } p.sub { color: var(--muted); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  label { display:block; font-weight:600; margin: 0 0 4px; } .hint { color: var(--muted); font-weight: 400; font-size: 13px; }
+  input[type=text], input[type=number], input[type=file] { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:transparent; color:var(--ink); font:inherit; }
+  .row { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; } @media (max-width:640px){ .row{grid-template-columns:1fr;} }
+  .grid3 { display:grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-top:10px; }
+  details { margin-top: 14px; } summary { cursor:pointer; color: var(--blue); font-weight:600; }
+  .chk { display:flex; gap:8px; align-items:center; margin-top:10px; font-weight:500; } .chk input { width:auto; }
+  button { background: var(--blue); color:#fff; border:0; border-radius:8px; padding:10px 18px; font:600 15px inherit; cursor:pointer; margin-top:16px; }
+  button:disabled { opacity:.55; cursor:default; }
+  .bar { height:10px; background: var(--line); border-radius:6px; overflow:hidden; margin:10px 0 6px; } .bar > div { height:100%; width:0; background: var(--blue); transition: width .4s; }
+  .msg { color: var(--muted); font-size: 14px; } .err { color: var(--err); font-weight:600; } .ok { color: var(--ok); font-weight:600; }
+  table { width:100%; border-collapse: collapse; font-size: 14px; } th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); } th { color:var(--muted); font-weight:600; }
+  td.n, th.n { text-align:right; font-variant-numeric: tabular-nums; }
+  .dl { display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; } .dl a { display:inline-block; padding:8px 14px; border:1px solid var(--line); border-radius:8px; color:var(--ink); text-decoration:none; font-weight:600; } .dl a:hover { border-color: var(--blue); color: var(--blue); }
+  .dl a.primary { background: var(--blue); color:#fff; border-color: var(--blue); }
+  img.prev { width:100%; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .hidden { display:none; } small { color: var(--muted); }
+  fieldset { border:1px solid var(--line); border-radius:10px; margin:14px 0 0; padding:10px 14px 14px; } legend { font-weight:600; padding:0 6px; }
+  .meth { display:grid; grid-template-columns: 22px 1fr 44px; gap:8px 10px; align-items:center; margin-top:8px; } .meth input[type=color] { width:44px; height:28px; padding:0; border:1px solid var(--line); background:transparent; }
+  .meth .d { font-weight:400; color:var(--muted); font-size:13px; display:block; }
+  .sw { display:inline-block; width:34px; height:0; border-top:3px solid; vertical-align:middle; margin-right:8px; } .sw.dotted { border-top-style:dotted; } .sw.dashed { border-top-style:dashed; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Steel Member Annotator</h1>
+  <p class="sub">Upload a drawing PDF (any number of pages), type the member name, and get the members annotated in blue with their lengths calculated.</p>
+
+  <form id="f" class="card">
+    <div class="row">
+      <div>
+        <label for="file">Drawing PDF <span class="hint">(max <span id="mb">{{ max_mb }}</span> MB, up to {{ max_pages }} pages)</span></label>
+        <input id="file" name="file" type="file" accept="application/pdf,.pdf" required>
+      </div>
+      <div>
+        <label for="member">Member name <span class="hint">(as printed on the drawing)</span></label>
+        <input id="member" name="member" type="text" placeholder="e.g. SB4" maxlength="40" required autocomplete="off">
+      </div>
+    </div>
+    <details>
+      <summary>Advanced settings</summary>
+      <div class="grid3">
+        <div><label for="scale">Drawing scale 1 :</label><input id="scale" name="scale" type="number" value="100" min="1" step="any"></div>
+        <div><label for="offset">Blue line offset <span class="hint">(PDF units)</span></label><input id="offset" name="offset" type="number" value="4" min="0.5" step="any"></div>
+        <div><label for="max_dist">Max label-to-member distance <span class="hint">(PDF units)</span></label><input id="max_dist" name="max_dist" type="number" value="8" min="2" step="any"></div>
+        <div><label for="threshold">Match threshold <span class="hint">(0.60-0.99)</span></label><input id="threshold" name="threshold" type="number" value="0.90" min="0.6" max="0.99" step="0.01"></div>
+        <div><label for="bold_width">Member line width <span class="hint">(pt, blank = auto)</span></label><input id="bold_width" name="bold_width" type="number" min="0" step="any"></div>
+      </div>
+      <label class="chk"><input type="checkbox" name="diagonal" checked> Also search diagonal (rotated) labels <small>(adds ~15 s per A1 page)</small></label>
+      <label class="chk"><input type="checkbox" name="suffix_check" checked> Skip longer marks, e.g. SB4A when searching SB4</label>
+      <label class="chk"><input type="checkbox" name="ocr_audit" checked> Cross-check every label with OCR <small>(adds ~30 s per A1 page; catches labels the other detectors miss)</small></label>
+      <fieldset>
+        <legend>Extra ways to find the member <small>(used only when the standard bold-black-line search finds nothing; drawn dotted in their own colour)</small></legend>
+        <div class="meth"><input type="checkbox" name="extra_colour" checked><label for="" style="margin:0">Coloured / dashed lines<span class="d">e.g. purple dashed steel members; dashes are joined into one member</span></label><input type="color" name="col_colour" value="#00a63f"></div>
+        <div class="meth"><input type="checkbox" name="extra_width" checked><label for="" style="margin:0">Other line widths<span class="d">dark lines between the widths below</span></label><input type="color" name="col_width" value="#ff7f00"></div>
+        <div class="meth"><input type="checkbox" name="extra_leader" checked><label for="" style="margin:0">Via leader line<span class="d">a thin line that starts at the label and ends on a member</span></label><input type="color" name="col_leader" value="#8b4a0b"></div>
+        <div class="meth"><input type="checkbox" name="extra_wide"><label for="" style="margin:0">Wider search <small>(least certain - review these)</small><span class="d">any of the above up to N times farther from the label</span></label><input type="color" name="col_wide" value="#00b8d9"></div>
+        <div class="meth"><span></span><label for="" style="margin:0">Label found but no member<span class="d">dotted box around the label (not measured)</span></label><input type="color" name="col_unmatched" value="#e000e0"></div>
+        <div class="grid3">
+          <div><label for="member_colors">Member colours <span class="hint">(auto, or #C78FFF;0.26,0.31,0.94)</span></label><input id="member_colors" name="member_colors" type="text" value="auto"></div>
+          <div><label for="dash_gap">Join dashes closer than <span class="hint">(units)</span></label><input id="dash_gap" name="dash_gap" type="number" value="6" min="0.5" step="any"></div>
+          <div><label for="color_tol">Colour tolerance <span class="hint">(0-0.5)</span></label><input id="color_tol" name="color_tol" type="number" value="0.06" min="0" max="0.5" step="0.01"></div>
+          <div><label for="width_min">Line width from <span class="hint">(pt)</span></label><input id="width_min" name="width_min" type="number" value="0.9" min="0" step="any"></div>
+          <div><label for="width_max">Line width to <span class="hint">(pt)</span></label><input id="width_max" name="width_max" type="number" value="4" min="0.1" step="any"></div>
+          <div><label for="extra_widths">More exact widths <span class="hint">(e.g. 0.5,6)</span></label><input id="extra_widths" name="extra_widths" type="text"></div>
+          <div><label for="wide_factor">Wider search factor <span class="hint">(x max distance)</span></label><input id="wide_factor" name="wide_factor" type="number" value="2.5" min="1" max="10" step="0.1"></div>
+          <div><label for="leader_tip_dist">Leader end to member <span class="hint">(units)</span></label><input id="leader_tip_dist" name="leader_tip_dist" type="number" value="6" min="0.5" step="any"></div>
+          <div><label for="dash_style">Line style of extra finds</label><select id="dash_style" name="dash_style" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);font:inherit"><option value="dotted" selected>dotted</option><option value="dashed">dashed</option><option value="solid">solid</option></select></div>
+        </div>
+        <label class="chk"><input type="checkbox" name="mark_unmatched" checked> Draw a dotted box around labels with no member found</label>
+        <label class="chk"><input type="checkbox" name="legend_page" checked> Add a legend page to the annotated PDF</label>
+      </fieldset>
+    </details>
+    <button id="go" type="submit">Annotate &amp; calculate</button>
+  </form>
+
+  <section id="prog" class="card hidden">
+    <div id="pmsg" class="msg">Starting...</div>
+    <div class="bar"><div id="pbar"></div></div>
+  </section>
+
+  <section id="res" class="card hidden"></section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const form = $("f"), go = $("go");
+const fmt = (v, d = 2) => Number(v).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === "class") e.className = v; else e.setAttribute(k, v); }
+  for (const k of kids) e.append(k);
+  return e;
+}
+
+form.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  $("res").classList.add("hidden"); $("res").replaceChildren();
+  $("prog").classList.remove("hidden"); $("pbar").style.width = "0%"; $("pmsg").className = "msg"; $("pmsg").textContent = "Uploading...";
+  go.disabled = true;
+  try {
+    const r = await fetch("/api/jobs", { method: "POST", body: new FormData(form) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    await poll(j.job_id);
+  } catch (e) {
+    $("pmsg").className = "err"; $("pmsg").textContent = e.message;
+  } finally { go.disabled = false; }
+});
+
+async function poll(id) {
+  for (;;) {
+    const r = await fetch(`/api/jobs/${id}`);
+    const s = await r.json();
+    $("pbar").style.width = Math.round((s.progress || 0) * 100) + "%";
+    $("pmsg").textContent = s.message || s.state;
+    if (s.state === "done") { show(id, s.result); return; }
+    if (s.state === "error") throw new Error(s.message);
+    await new Promise((res) => setTimeout(res, 1200));
+  }
+}
+
+function show(id, r) {
+  $("pmsg").className = "ok"; $("pmsg").textContent = `Done - ${r.totals.members} "${r.member}" member(s) found`;
+  const box = $("res"); box.classList.remove("hidden");
+  const u = (n) => `/api/jobs/${id}/files/${encodeURIComponent(n)}`;
+  const o = r.outputs;
+  box.append(el("h2", { style: "margin:0 0 8px;font-size:17px" }, "Downloads"));
+  const dl = el("div", { class: "dl" },
+    el("a", { class: "primary", href: u(o.zip) }, "All outputs (.zip)"),
+    el("a", { href: u(o.annotated_pdf) }, "Annotated PDF"),
+    el("a", { href: u(o.excel) }, "Excel"),
+    el("a", { href: u(o.json) }, "JSON"));
+  (o.png || []).forEach((p, i) => dl.append(el("a", { href: u(p), target: "_blank" }, `PNG preview ${i + 1}`)));
+  box.append(dl);
+
+  if ((r.legend || []).length) {
+    box.append(el("h2", { style: "margin:18px 0 8px;font-size:17px" }, "Legend"));
+    const lg = el("div", {});
+    r.legend.forEach((l) => {
+      const sw = el("span", { class: "sw " + (l.dash === "dotted" ? "dotted" : l.dash === "dashed" ? "dashed" : "") }); sw.style.borderTopColor = l.color;
+      lg.append(el("div", {}, sw, `${l.title} - ${l.count}`));
+    });
+    box.append(lg);
+  }
+  box.append(el("h2", { style: "margin:18px 0 8px;font-size:17px" }, "Pages"));
+  const pt = el("table"); pt.append(el("tr", {}, ...["Page", "Labels found", "How they were found", "Annotated members", "Skipped / notes"].map((h) => el("th", {}, h))));
+  r.pages.forEach((p) => {
+    const counts = {}; p.rejected.forEach((x) => { counts[x] = (counts[x] || 0) + 1; });
+    const skipped = Object.entries(counts).map(([k, n]) => `${n} x ${k}`);
+    const src = p.sources ? `vector ${p.sources.vector}, +pixel ${p.sources.raster}, +OCR ${p.sources.ocr}, +diagonal exact ${p.sources.vector_rotated || 0}, +rotated pixel ${p.sources.rotated}` : "";
+    pt.append(el("tr", {}, el("td", {}, String(p.page)), el("td", {}, String(p.candidates)), el("td", {}, src), el("td", {}, String(p.members)), el("td", {}, [...p.warnings, ...skipped].join("; "))));
+  });
+  box.append(pt);
+  box.append(el("p", { class: "msg" }, "Every label that was found is either annotated or listed under Skipped. Solid blue = standard finder; dotted lines in other colours = found by an extra method (see Legend) - please check them. Dotted boxes mark labels with no member; a grey box marks a longer mark (e.g. SB21 when searching SB2) that was skipped on purpose."));
+
+  if (r.members.length) {
+    box.append(el("h2", { style: "margin:18px 0 8px;font-size:17px" }, "Members"));
+    const t = el("table");
+    t.append(el("tr", {}, el("th", {}, "ID"), el("th", {}, "Page"), el("th", {}, "Orientation"), el("th", {}, "Found by"),
+      el("th", { class: "n" }, "Length (PDF units)"), el("th", { class: "n" }, "On paper (mm)"), el("th", { class: "n" }, "Real (mm)")));
+    r.members.forEach((m) => t.append(el("tr", {}, el("td", {}, m.id), el("td", {}, String(m.page)), el("td", {}, m.orientation), el("td", {}, m.found_by === "bold" ? "standard" : m.found_by),
+      el("td", { class: "n" }, fmt(m.length_pdf_units)), el("td", { class: "n" }, fmt(m.length_paper_mm, 1)), el("td", { class: "n" }, fmt(m.length_real_mm, 0)))));
+    t.append(el("tr", {}, el("th", {}, "Total"), el("th", {}, ""), el("th", {}, ""), el("th", {}, ""), el("th", { class: "n" }, fmt(r.totals.length_pdf_units)),
+      el("th", { class: "n" }, fmt(r.totals.length_paper_mm, 1)), el("th", { class: "n" }, fmt(r.totals.length_real_mm, 0))));
+    box.append(t);
+    box.append(el("h2", { style: "margin:18px 0 8px;font-size:17px" }, "Preview"));
+    (o.png || []).forEach((p) => box.append(el("a", { href: u(p), target: "_blank" }, el("img", { class: "prev", src: u(p), alt: "annotated page preview", loading: "lazy" }))));
+  } else {
+    box.append(el("p", { class: "msg" }, "No matching member was found. Check the spelling, or lower the match threshold under Advanced settings."));
+  }
+}
+</script>
+</body>
+</html>

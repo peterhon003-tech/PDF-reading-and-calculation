@@ -1,0 +1,22 @@
+services:
+  sb-annotator:
+    build:
+      context: .
+      args:
+        WITH_LIBREOFFICE: "0"      # "1" = Excel files carry pre-calculated values (bigger image)
+    image: sb-annotator:1.0
+    container_name: sb-annotator
+    ports:
+      - "8000:8000"
+    environment:
+      SB_MAX_UPLOAD_MB: "200"      # largest PDF accepted
+      SB_MAX_PAGES: "60"           # most pages processed per upload
+      SB_JOB_TTL_HOURS: "24"       # uploaded files and results are deleted after this
+      SB_WORKERS: "1"              # jobs processed at the same time (each needs ~1.5 GB RAM for A1 pages)
+    volumes:
+      - sb_data:/data
+    mem_limit: 4g
+    restart: unless-stopped
+
+volumes:
+  sb_data:
